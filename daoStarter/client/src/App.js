@@ -13,7 +13,7 @@ import { ethers } from "ethers";
 import FactoryArtifact from "./contracts/Factory.json"
 import contractAddress from "./contracts/contract-address.json"
 import { providers, Signer } from "ethers"
-//import { CoreAPI, Request } from "@textile/eth-storage"
+import { CoreAPI, Request } from "@textile/eth-storage"
 import TextField from '@material-ui/core/TextField';
 const BUIDLER_EVM_NETWORK_ID = '137'
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001
@@ -171,28 +171,37 @@ export default function App() {
     }
 
 
-    async function mintFunc() {
-        try {
-            setTxError('undefined')
-
-            const tx = await TokenData.mint(filAddr, proposalCID)
-            setTxBeingSent(tx.hash)
-            const receipt = await tx.wait()
-            if (receipt.status === 0) {
-                throw new Error("Tx failed")
-            }
-        } catch (error) {
-            if (error.code === ERROR_CODE_TX_REJECTED_BY_USER) {
-                return;
-            }
-            console.error(error);
-            setTxError({ transactionError: error });
-        } finally {
-            setTxBeingSent({ txBeingSent: undefined });
+    const onUpload = (file) => {
+        setUploading(true)
+        api.store(file)
+          .then((request) => {
+            setUploads([...uploads, request])
+            setUploading(false)
+            alert(`IPFS CID:\n${request.cid["/"]}`)
+          })
+          .catch((err) => {
+            setUploading(false)
+            alert(err.message)
+          });
+      }
+    
+      const onStatus = (id) => {
+        if (id) {
+          api.status(id)
+            .then(({ request }) => {
+              alert(`Filecoin deal status: "${request.status_code}"!`);
+            })
+            .catch((err) => alert(err.message));
+        } else {
+          console.warn("no 'active' file, upload a file first")
         }
-        submitSpreadTxn(proposalCID)
-    }
-
+      }
+    
+      const onSubmit = () => {
+        api.addDeposit()
+          .then(() => setDeposit(true))
+          .catch((err) => alert(err.message));
+      };
     async function submitSpreadTxn(proposalCID) {
         console.log("sending to backend")
 
